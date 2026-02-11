@@ -1,7 +1,5 @@
 package explorer
 
-import "path/filepath"
-
 type Tree struct {
 	node         *Node
 	selectedPath string
@@ -83,8 +81,7 @@ func findNode(node *Node, path string) *Node {
 		return node
 	}
 
-	rel, err := filepath.Rel(node.Path, path)
-	if err != nil || len(rel) >= 2 && rel[:2] == ".." {
+	if !isUnder(node.Path, path) {
 		return nil
 	}
 

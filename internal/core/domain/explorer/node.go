@@ -1,6 +1,9 @@
 package explorer
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 type Node struct {
 	Name     string
@@ -21,12 +24,16 @@ func (n *Node) Flatten(out *[]*Node) {
 }
 
 func (n *Node) ContainsPath(path string) bool {
-	rel, err := filepath.Rel(n.Path, path)
+	return isUnder(n.Path, path)
+}
+
+func isUnder(base, target string) bool {
+	rel, err := filepath.Rel(base, target)
 	if err != nil {
 		return false
 	}
 
-	if rel == "." || len(rel) >= 2 && rel[:2] == ".." {
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return false
 	}
 	return true
