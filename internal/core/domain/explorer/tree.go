@@ -1,5 +1,7 @@
 package explorer
 
+import "path/filepath"
+
 type Tree struct {
 	node         *Node
 	selectedPath string
@@ -52,4 +54,44 @@ func (t *Tree) Toggle(node *Node, children []*Node) {
 	}
 
 	t.dirty = true
+}
+
+func (t *Tree) Select(node *Node) {
+	if node.IsDir {
+		return
+	}
+	t.selectedPath = node.Path
+}
+
+func (t *Tree) ClearSelection() {
+	t.selectedPath = ""
+}
+
+func (t *Tree) Reset(node *Node) {
+	t.node = node
+	t.selectedPath = ""
+	t.flatCache = t.flatCache[:0]
+	t.dirty = true
+}
+
+func (t *Tree) FindNode(path string) *Node {
+	return findNode(t.node, path)
+}
+
+func findNode(node *Node, path string) *Node {
+	if node.Path == path {
+		return node
+	}
+
+	rel, err := filepath.Rel(node.Path, path)
+	if err != nil || len(rel) >= 2 && rel[:2] == ".." {
+		return nil
+	}
+
+	for _, c := range node.Children {
+		if found := findNode(c, path); found != nil {
+			return found
+		}
+	}
+	return nil
 }
