@@ -127,6 +127,18 @@ func Test_ContainsPath(t *testing.T) {
 			want:     true,
 		},
 		{
+			name:     "hidden file is under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/project/.env",
+			want:     true,
+		},
+		{
+			name:     "hidden weird file is under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/project/..env",
+			want:     true,
+		},
+		{
 			name:     "Self is not under",
 			nodePath: "/home/user/project",
 			target:   "/home/user/project",
