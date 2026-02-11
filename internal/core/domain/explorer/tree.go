@@ -39,3 +39,17 @@ func (t *Tree) rebuild() {
 		}
 	}
 }
+
+func (t *Tree) Toggle(node *Node, children []*Node) {
+	node.Expanded = !node.Expanded
+
+	if node.Expanded && len(node.Children) == 0 && len(children) > 0 {
+		node.Children = children
+	}
+
+	if !node.Expanded && node.ContainsPath(t.selectedPath) {
+		t.selectedPath = ""
+	}
+
+	t.dirty = true
+}

@@ -3,6 +3,8 @@ package explorer
 import "testing"
 
 func Test_Flatten(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name      string
 		node      *Node
@@ -85,6 +87,7 @@ func Test_Flatten(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var act []*Node
 
 			tc.node.Flatten(&act)
@@ -95,6 +98,68 @@ func Test_Flatten(t *testing.T) {
 				if act[i].Name != name {
 					t.Errorf("want: %s, act[%d].Name: %s", name, i, act[i].Name)
 				}
+			}
+		})
+	}
+}
+
+func Test_ContainsPath(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		nodePath string
+		target   string
+		want     bool
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Direct child file is under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/project/main.go",
+			want:     true,
+		},
+		{
+			name:     "Nested file is under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/project/internal/core/domain.go",
+			want:     true,
+		},
+		{
+			name:     "Self is not under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/project",
+			want:     false,
+		},
+		{
+			name:     "Sibling directory is not under",
+			nodePath: "/home/user/project",
+			target:   "/home/user/other",
+			want:     false,
+		},
+		{
+			name:     "Parent directory is not under",
+			nodePath: "/home/user/project",
+			target:   "/home/user",
+			want:     false,
+		},
+		{
+			name:     "Prefix only match is not under",
+			nodePath: "/home/user/proj",
+			target:   "/home/user/project",
+			want:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			node := &Node{Path: tc.nodePath, IsDir: true}
+
+			act := node.ContainsPath(tc.target)
+			if act != tc.want {
+				t.Errorf("want: %t, act: %t", tc.want, act)
 			}
 		})
 	}

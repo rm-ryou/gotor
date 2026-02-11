@@ -1,5 +1,7 @@
 package explorer
 
+import "path/filepath"
+
 type Node struct {
 	Name     string
 	Path     string
@@ -16,4 +18,16 @@ func (n *Node) Flatten(out *[]*Node) {
 			c.Flatten(out)
 		}
 	}
+}
+
+func (n *Node) ContainsPath(path string) bool {
+	rel, err := filepath.Rel(n.Path, path)
+	if err != nil {
+		return false
+	}
+
+	if rel == "." || len(rel) >= 2 && rel[:2] == ".." {
+		return false
+	}
+	return true
 }
