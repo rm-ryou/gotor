@@ -18,7 +18,7 @@ func setupTestDir(t *testing.T) string {
 	}
 
 	for _, name := range []string{"main.go", "go.mod", ".gitignore"} {
-		if err := os.WriteFile(filepath.Join(root, name), nil, 0o6444); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
