@@ -1,4 +1,4 @@
-package explorer
+package usecase
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_New(t *testing.T) {
+func Test_NewExplorer(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
@@ -56,7 +56,7 @@ func Test_New(t *testing.T) {
 			mockFS := mocks.NewMockFSReader(ctrl)
 			tc.setupMock(mockFS)
 
-			uc, err := New(mockFS, tc.rootPath)
+			uc, err := NewExplorer(mockFS, tc.rootPath)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("want error: %t, act: %v", tc.wantErr, err)
 			}
@@ -147,7 +147,7 @@ func Test_ToggleNode(t *testing.T) {
 				mockFS.EXPECT().ReadDir(subdir, 2).Return(tc.subdirNodes, nil).MaxTimes(1)
 			}
 
-			uc, _ := New(mockFS, root)
+			uc, _ := NewExplorer(mockFS, root)
 			node := uc.Tree().VisibleNodes()[0]
 
 			var err error
