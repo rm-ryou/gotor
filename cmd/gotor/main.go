@@ -18,7 +18,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := app.New(explorerUC).Run(); err != nil {
+	a, err := app.New(explorerUC)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if err := a.Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

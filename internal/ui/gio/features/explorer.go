@@ -1,15 +1,18 @@
 package features
 
 import (
+	"image"
 	"image/color"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	domain "github.com/rm-ryou/gotor/internal/core/domain/explorer"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
+	"github.com/rm-ryou/gotor/internal/ui/assets/icon"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
@@ -56,12 +59,41 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 				Axis:      layout.Horizontal,
 				Alignment: layout.Middle,
 			}.Layout(gtx,
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return layoutIcon(gtx, node, ev.theme.Theme)
+				}),
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 					lbl := material.Body2(ev.theme.Theme, node.Name)
-					lbl.Color = color.NRGBA{R: 204, G: 204, B: 204, A: 255}
+					lbl.Color = ev.theme.Palette.Fg
 					return lbl.Layout(gtx)
 				}),
 			)
 		}),
 	)
+}
+
+func layoutIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {
+	var i string
+	var c color.NRGBA
+
+	if node.IsDir {
+		if node.Expanded {
+			i = icon.FolderOpenIcon.Glyph
+			c = icon.FolderOpenIcon.Color
+		}
+		i = icon.FolderClosedIcon.Glyph
+		c = icon.FolderClosedIcon.Color
+	} else {
+		i = icon.DefaultFileIcon.Glyph
+		c = icon.DefaultFileIcon.Color
+	}
+
+	size := gtx.Dp(unit.Dp(system.DefaultTextSize + 2))
+	gtx.Constraints.Min = image.Pt(size, size)
+	gtx.Constraints.Max = image.Pt(size, size)
+
+	lbl := material.Body2(th, i)
+	lbl.Color = c
+
+	return layout.Center.Layout(gtx, lbl.Layout)
 }

@@ -17,9 +17,12 @@ type App struct {
 	explorerView *features.ExplorerView
 }
 
-func New(explorerUC *usecase.Explorer) *App {
+func New(explorerUC *usecase.Explorer) (*App, error) {
 	w := new(app.Window)
-	th := system.NewTheme()
+	th, err := system.NewTheme()
+	if err != nil {
+		return nil, err
+	}
 
 	explorerView := features.NewExplorerView(th, explorerUC)
 
@@ -28,7 +31,7 @@ func New(explorerUC *usecase.Explorer) *App {
 		window: w,
 
 		explorerView: explorerView,
-	}
+	}, nil
 }
 
 func (a *App) Run() error {
