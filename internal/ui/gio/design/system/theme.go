@@ -10,7 +10,7 @@ import (
 	assetfonts "github.com/rm-ryou/gotor/internal/ui/assets/fonts"
 )
 
-const DefaultTextSize = 12
+const DefaultTextSize = 16
 
 type Theme struct {
 	*material.Theme

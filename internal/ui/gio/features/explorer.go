@@ -17,9 +17,10 @@ import (
 )
 
 type ExplorerView struct {
-	theme *system.Theme
-	uc    *usecase.Explorer
-	list  widget.List
+	theme   *system.Theme
+	uc      *usecase.Explorer
+	list    widget.List
+	widgets map[*domain.Node]*widget.Clickable
 }
 
 func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
@@ -29,6 +30,7 @@ func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
+		widgets: make(map[*domain.Node]*widget.Clickable),
 	}
 }
 
@@ -47,29 +49,62 @@ func (ev *ExplorerView) Layout(gtx layout.Context) layout.Dimensions {
 	)
 }
 
+func (ev *ExplorerView) HandleNodeClicks(gtx layout.Context) {
+	for _, node := range ev.uc.Tree().VisibleNodes() {
+		c := ev.clickableFor(node)
+		if c.Clicked(gtx) {
+			if node.IsDir {
+				_ = ev.uc.ToggleNode(node)
+			} else {
+				ev.uc.SelectFile(node)
+			}
+		}
+	}
+}
+
+func (ev *ExplorerView) clickableFor(node *domain.Node) *widget.Clickable {
+	c, ok := ev.widgets[node]
+	if !ok {
+		c = new(widget.Clickable)
+		ev.widgets[node] = c
+	}
+
+	return c
+}
+
 func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout.Dimensions {
-	return layout.Stack{}.Layout(gtx,
-		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-			defer clip.Rect{Max: gtx.Constraints.Min}.Push(gtx.Ops).Pop()
-			paint.Fill(gtx.Ops, ev.theme.Palette.Bg)
-			return layout.Dimensions{Size: gtx.Constraints.Min}
-		}),
-		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{
-				Axis:      layout.Horizontal,
-				Alignment: layout.Middle,
-			}.Layout(gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layoutIcon(gtx, node, ev.theme.Theme)
-				}),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					lbl := material.Body2(ev.theme.Theme, node.Name)
-					lbl.Color = ev.theme.Palette.Fg
-					return lbl.Layout(gtx)
-				}),
-			)
-		}),
-	)
+	c := ev.clickableFor(node)
+
+	return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+
+		return layout.Stack{}.Layout(gtx,
+			layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+				defer clip.Rect{Max: gtx.Constraints.Min}.Push(gtx.Ops).Pop()
+				paint.Fill(gtx.Ops, ev.theme.Palette.Bg)
+				return layout.Dimensions{Size: gtx.Constraints.Min}
+			}),
+			layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+				return layout.Inset{
+					Left: unit.Dp(float32(node.Depth) * 12),
+				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{
+						Axis:      layout.Horizontal,
+						Alignment: layout.Middle,
+					}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layoutIcon(gtx, node, ev.theme.Theme)
+						}),
+						layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
+						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							lbl := material.Body2(ev.theme.Theme, node.Name)
+							lbl.Color = ev.theme.Palette.Fg
+							return lbl.Layout(gtx)
+						}),
+					)
+				})
+			}),
+		)
+	})
 }
 
 func layoutIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {

@@ -56,13 +56,14 @@ func (a *App) loop() error {
 			return e.Err
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
-			a.Layout(gtx, a.theme)
+			a.setEventHandler(gtx)
+			a.layout(gtx, a.theme)
 			e.Frame(gtx.Ops)
 		}
 	}
 }
 
-func (a *App) Layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
+func (a *App) layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
 	paint.Fill(gtx.Ops, th.Palette.Bg)
 
 	layout.Flex{Axis: layout.Vertical, Spacing: 0}.Layout(gtx,
@@ -72,4 +73,8 @@ func (a *App) Layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
 	)
 
 	return layout.Dimensions{Size: gtx.Constraints.Max}
+}
+
+func (a *App) setEventHandler(gtx layout.Context) {
+	a.explorerView.HandleNodeClicks(gtx)
 }
