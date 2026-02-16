@@ -1,4 +1,4 @@
-package explorer
+package usecase
 
 import (
 	"fmt"
@@ -8,14 +8,14 @@ import (
 	domain "github.com/rm-ryou/gotor/internal/core/domain/explorer"
 )
 
-type UseCase struct {
+type Explorer struct {
 	fs   domain.FSReader
 	tree *domain.Tree
 
 	OnFileSelected func(path string)
 }
 
-func New(fs domain.FSReader, rootPath string) (*UseCase, error) {
+func NewExplorer(fs domain.FSReader, rootPath string) (*Explorer, error) {
 	absRoot, err := resolveRoot(rootPath)
 	if err != nil {
 		return nil, fmt.Errorf("explorer usecase: resolve root: %w", err)
@@ -35,17 +35,17 @@ func New(fs domain.FSReader, rootPath string) (*UseCase, error) {
 	}
 	root.Children = children
 
-	return &UseCase{
+	return &Explorer{
 		fs:   fs,
 		tree: domain.New(root),
 	}, nil
 }
 
-func (uc *UseCase) Tree() *domain.Tree {
-	return uc.tree
+func (e *Explorer) Tree() *domain.Tree {
+	return e.tree
 }
 
-func (uc *UseCase) ToggleNode(node *domain.Node) error {
+func (e *Explorer) ToggleNode(node *domain.Node) error {
 	if !node.IsDir {
 		return nil
 	}
@@ -53,32 +53,32 @@ func (uc *UseCase) ToggleNode(node *domain.Node) error {
 	var children []*domain.Node
 
 	if !node.Expanded && len(node.Children) == 0 {
-		loaded, err := uc.fs.ReadDir(node.Path, node.Depth+1)
+		loaded, err := e.fs.ReadDir(node.Path, node.Depth+1)
 		if err != nil {
 			return fmt.Errorf("explorer usecase: read dir %s: %w", node.Path, err)
 		}
 		children = loaded
 	}
 
-	uc.tree.Toggle(node, children)
+	e.tree.Toggle(node, children)
 	return nil
 }
 
-func (uc *UseCase) SelectFile(node *domain.Node) {
+func (e *Explorer) SelectFile(node *domain.Node) {
 	if node.IsDir {
 		return
 	}
-	uc.tree.Select(node)
-	if uc.OnFileSelected != nil {
-		uc.OnFileSelected(node.Path)
+	e.tree.Select(node)
+	if e.OnFileSelected != nil {
+		e.OnFileSelected(node.Path)
 	}
 }
 
-func (uc *UseCase) ClearSelection() {
-	uc.tree.ClearSelection()
+func (e *Explorer) ClearSelection() {
+	e.tree.ClearSelection()
 }
 
-func (uc *UseCase) ChangeRoot(path string) error {
+func (e *Explorer) ChangeRoot(path string) error {
 	absPath, err := resolveRoot(path)
 	if err != nil {
 		return fmt.Errorf("explorer usecase: resolve root: %w", err)
@@ -91,13 +91,13 @@ func (uc *UseCase) ChangeRoot(path string) error {
 		Depth:    0,
 		Expanded: true,
 	}
-	children, err := uc.fs.ReadDir(absPath, 1)
+	children, err := e.fs.ReadDir(absPath, 1)
 	if err != nil {
 		return fmt.Errorf("explorer usecase: read dir %s: %w", absPath, err)
 	}
 	root.Children = children
 
-	uc.tree.Reset(root)
+	e.tree.Reset(root)
 	return nil
 }
 
