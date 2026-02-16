@@ -64,13 +64,13 @@ func (a *App) loop() error {
 func (a *App) layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
 	paint.Fill(gtx.Ops, th.Palette.Bg)
 
-	layout.Flex{Axis: layout.Vertical, Spacing: 0}.Layout(gtx,
+	dims := layout.Flex{Axis: layout.Vertical, Spacing: 0}.Layout(gtx,
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return a.explorerView.Layout(gtx)
 		}),
 	)
 
-	return layout.Dimensions{Size: gtx.Constraints.Max}
+	return dims
 }
 
 func (a *App) setEventHandler(gtx layout.Context) {
