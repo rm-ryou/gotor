@@ -4,10 +4,8 @@ import (
 	"image/color"
 
 	"gioui.org/font"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	assetfonts "github.com/rm-ryou/gotor/internal/ui/assets/fonts"
 )
 
 const DefaultTextSize = 16
@@ -23,8 +21,8 @@ func NewTheme() (*Theme, error) {
 		return nil, err
 	}
 
-	th.Shaper = text.NewShaper(text.NoSystemFonts(), text.WithCollection(fontFaces))
-	th.Face = font.Typeface(assetfonts.DefaultTypeface)
+	th.Shaper = NewShaper(fontFaces)
+	th.Face = font.Typeface(DefaultTypefaceWithFallback())
 
 	t := &Theme{
 		Theme: th,

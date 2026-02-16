@@ -19,6 +19,7 @@ type App struct {
 
 func New(explorerUC *usecase.Explorer) (*App, error) {
 	w := new(app.Window)
+	w.Option(app.Title("gotor"))
 	th, err := system.NewTheme()
 	if err != nil {
 		return nil, err
@@ -46,12 +47,9 @@ func (a *App) Run() error {
 }
 
 func (a *App) loop() error {
-	w := new(app.Window)
-	w.Option(app.Title("gotor"))
-
 	var ops op.Ops
 	for {
-		switch e := w.Event().(type) {
+		switch e := a.window.Event().(type) {
 		case app.DestroyEvent:
 			return e.Err
 		case app.FrameEvent:
