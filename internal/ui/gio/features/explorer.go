@@ -13,29 +13,35 @@ import (
 	domain "github.com/rm-ryou/gotor/internal/core/domain/explorer"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
 	"github.com/rm-ryou/gotor/internal/ui/assets/icon"
+	designlayout "github.com/rm-ryou/gotor/internal/ui/gio/design/layout"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
+const nodeGap = 4
+
 type ExplorerView struct {
-	theme   *system.Theme
-	uc      *usecase.Explorer
-	list    widget.List
-	widgets map[*domain.Node]*widget.Clickable
+	theme    *system.Theme
+	uc       *usecase.Explorer
+	layout   *designlayout.Explorer
+	list     widget.List
+	clickers map[*domain.Node]*widget.Clickable
 }
 
 func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
 	return &ExplorerView{
-		theme: th,
-		uc:    uc,
+		theme:  th,
+		uc:     uc,
+		layout: designlayout.NewExplorer(system.DefaultTextSize),
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
-		widgets: make(map[*domain.Node]*widget.Clickable),
+		clickers: make(map[*domain.Node]*widget.Clickable),
 	}
 }
 
 func (ev *ExplorerView) Layout(gtx layout.Context) layout.Dimensions {
 	nodes := ev.uc.Tree().VisibleNodes()
+	ev.syncClickables(nodes)
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
@@ -50,7 +56,10 @@ func (ev *ExplorerView) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (ev *ExplorerView) HandleNodeClicks(gtx layout.Context) {
-	for _, node := range ev.uc.Tree().VisibleNodes() {
+	nodes := ev.uc.Tree().VisibleNodes()
+	ev.syncClickables(nodes)
+
+	for _, node := range nodes {
 		c := ev.clickableFor(node)
 		if c.Clicked(gtx) {
 			if node.IsDir {
@@ -62,11 +71,27 @@ func (ev *ExplorerView) HandleNodeClicks(gtx layout.Context) {
 	}
 }
 
+func (ev *ExplorerView) syncClickables(nodes []*domain.Node) {
+	visible := make(map[*domain.Node]struct{}, len(nodes))
+	for _, node := range nodes {
+		visible[node] = struct{}{}
+		if _, ok := ev.clickers[node]; !ok {
+			ev.clickers[node] = new(widget.Clickable)
+		}
+	}
+
+	for node := range ev.clickers {
+		if _, ok := visible[node]; !ok {
+			delete(ev.clickers, node)
+		}
+	}
+}
+
 func (ev *ExplorerView) clickableFor(node *domain.Node) *widget.Clickable {
-	c, ok := ev.widgets[node]
+	c, ok := ev.clickers[node]
 	if !ok {
 		c = new(widget.Clickable)
-		ev.widgets[node] = c
+		ev.clickers[node] = c
 	}
 
 	return c
@@ -85,19 +110,19 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 			}),
 			layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{
-					Left: unit.Dp(float32(node.Depth) * 12),
+					Left: ev.layout.Indent(node.Depth),
 				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
 						Axis:      layout.Horizontal,
 						Alignment: layout.Middle,
 					}.Layout(gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return arrowIcon(gtx, node, ev.theme.Theme)
+							return ev.arrowIcon(gtx, node)
 						}),
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return layoutIcon(gtx, node, ev.theme.Theme)
+							return ev.layoutIcon(gtx, node)
 						}),
-						layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
+						layout.Rigid(layout.Spacer{Width: unit.Dp(nodeGap)}.Layout),
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 							lbl := material.Body2(ev.theme.Theme, node.Name)
 							lbl.Color = ev.theme.Palette.Fg
@@ -110,50 +135,44 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 	})
 }
 
-func arrowIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {
-	glyph := ""
-
-	if node.IsDir {
-		if node.Expanded {
-			glyph = icon.ArrowExpanded
-		} else {
-			glyph = icon.ArrowCollapsed
-		}
-	}
+func (ev *ExplorerView) arrowIcon(gtx layout.Context, node *domain.Node) layout.Dimensions {
+	glyph := nodeArrowGlyph(node)
 
 	c := color.NRGBA{R: 204, G: 204, B: 204, A: 255}
-
-	size := gtx.Dp(unit.Dp(system.DefaultTextSize + 2))
-	gtx.Constraints.Min = image.Pt(size, size)
-	gtx.Constraints.Max = image.Pt(size, size)
-
-	lbl := material.Body2(th, glyph)
-	lbl.Color = c
-
-	return layout.Center.Layout(gtx, lbl.Layout)
+	return ev.layoutGlyph(gtx, glyph, c)
 }
 
-func layoutIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {
-	var i string
-	var c color.NRGBA
+func (ev *ExplorerView) layoutIcon(gtx layout.Context, node *domain.Node) layout.Dimensions {
+	glyph, c := nodeIcon(node)
+	return ev.layoutGlyph(gtx, glyph, c)
+}
 
+func nodeArrowGlyph(node *domain.Node) string {
+	if !node.IsDir {
+		return ""
+	}
+	if node.Expanded {
+		return icon.ArrowExpanded
+	}
+	return icon.ArrowCollapsed
+}
+
+func nodeIcon(node *domain.Node) (string, color.NRGBA) {
 	if node.IsDir {
 		if node.Expanded {
-			i = icon.FolderOpenIcon.Glyph
-			c = icon.FolderOpenIcon.Color
+			return icon.FolderOpenIcon.Glyph, icon.FolderOpenIcon.Color
 		}
-		i = icon.FolderClosedIcon.Glyph
-		c = icon.FolderClosedIcon.Color
-	} else {
-		i = icon.DefaultFileIcon.Glyph
-		c = icon.DefaultFileIcon.Color
+		return icon.FolderClosedIcon.Glyph, icon.FolderClosedIcon.Color
 	}
+	return icon.DefaultFileIcon.Glyph, icon.DefaultFileIcon.Color
+}
 
-	size := gtx.Dp(unit.Dp(system.DefaultTextSize + 2))
+func (ev *ExplorerView) layoutGlyph(gtx layout.Context, glyph string, c color.NRGBA) layout.Dimensions {
+	size := gtx.Dp(ev.layout.RowHeight())
 	gtx.Constraints.Min = image.Pt(size, size)
 	gtx.Constraints.Max = image.Pt(size, size)
 
-	lbl := material.Body2(th, i)
+	lbl := material.Body2(ev.theme.Theme, glyph)
 	lbl.Color = c
 
 	return layout.Center.Layout(gtx, lbl.Layout)
