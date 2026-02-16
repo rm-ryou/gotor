@@ -92,6 +92,9 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 						Alignment: layout.Middle,
 					}.Layout(gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return arrowIcon(gtx, node, ev.theme.Theme)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return layoutIcon(gtx, node, ev.theme.Theme)
 						}),
 						layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
@@ -105,6 +108,29 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 			}),
 		)
 	})
+}
+
+func arrowIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {
+	glyph := ""
+
+	if node.IsDir {
+		if node.Expanded {
+			glyph = icon.ArrowExpanded
+		} else {
+			glyph = icon.ArrowCollapsed
+		}
+	}
+
+	c := color.NRGBA{R: 204, G: 204, B: 204, A: 255}
+
+	size := gtx.Dp(unit.Dp(system.DefaultTextSize + 2))
+	gtx.Constraints.Min = image.Pt(size, size)
+	gtx.Constraints.Max = image.Pt(size, size)
+
+	lbl := material.Body2(th, glyph)
+	lbl.Color = c
+
+	return layout.Center.Layout(gtx, lbl.Layout)
 }
 
 func layoutIcon(gtx layout.Context, node *domain.Node, th *material.Theme) layout.Dimensions {
