@@ -138,8 +138,7 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 func (ev *ExplorerView) arrowIcon(gtx layout.Context, node *domain.Node) layout.Dimensions {
 	glyph := nodeArrowGlyph(node)
 
-	c := color.NRGBA{R: 204, G: 204, B: 204, A: 255}
-	return ev.layoutGlyph(gtx, glyph, c)
+	return ev.layoutGlyph(gtx, glyph, ev.theme.Palette.Fg)
 }
 
 func (ev *ExplorerView) layoutIcon(gtx layout.Context, node *domain.Node) layout.Dimensions {
