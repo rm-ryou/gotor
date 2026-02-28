@@ -22,6 +22,7 @@ type App struct {
 	window *app.Window
 
 	explorerView *features.ExplorerView
+	editorView   *features.EditorView
 }
 
 func New(explorerUC *usecase.Explorer) (*App, error) {
@@ -33,12 +34,14 @@ func New(explorerUC *usecase.Explorer) (*App, error) {
 	}
 
 	explorerView := features.NewExplorerView(th, explorerUC)
+	editorView := features.NewEditorView(th)
 
 	return &App{
 		theme:  th,
 		window: w,
 
 		explorerView: explorerView,
+		editorView:   editorView,
 	}, nil
 }
 
@@ -91,10 +94,7 @@ func (a *App) layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Min}
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Min = gtx.Constraints.Max
-			defer clip.Rect{Max: gtx.Constraints.Min}.Push(gtx.Ops).Pop()
-			paint.Fill(gtx.Ops, th.Palette.Bg)
-			return layout.Dimensions{Size: gtx.Constraints.Min}
+			return a.editorView.Layout(gtx)
 		}),
 	)
 
