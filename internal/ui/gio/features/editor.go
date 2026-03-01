@@ -61,7 +61,7 @@ func (ev *EditorView) Layout(gtx layout.Context) layout.Dimensions {
 func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []string, textColor color.NRGBA) layout.Dimensions {
 	return layout.Inset{
 		Top: unit.Dp(8), Bottom: unit.Dp(8),
-		Left: unit.Dp(8), Right: unit.Dp(8),
+		Left: unit.Dp(8),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return material.List(ev.theme.Theme, &ev.list).Layout(
 			gtx, len(lines),
@@ -94,6 +94,7 @@ func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lin
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			lbl := material.Body2(ev.theme.Theme, displayText)
 			lbl.Color = textColor
+			lbl.WrapPolicy = text.WrapGraphemes
 			return lbl.Layout(gtx)
 		}),
 	)
