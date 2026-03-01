@@ -115,4 +115,5 @@ func (a *App) layout(gtx layout.Context, th *system.Theme) layout.Dimensions {
 
 func (a *App) setEventHandler(gtx layout.Context) {
 	a.explorerView.HandleNodeClicks(gtx)
+	a.editorView.HandleKeyInput(gtx)
 }
