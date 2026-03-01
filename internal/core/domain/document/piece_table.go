@@ -60,6 +60,11 @@ func (pt *PieceTable) Lines() []string {
 	if text == "" {
 		return []string{""}
 	}
+
+	if strings.HasSuffix(text, "\n") {
+		text = strings.TrimSuffix(text, "\n")
+	}
+
 	lines := strings.Split(text, "\n")
 	if len(lines) == 0 {
 		return []string{""}
