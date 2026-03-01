@@ -32,42 +32,42 @@ func TestDisplayColumnForCursor(t *testing.T) {
 }
 
 func TestHandleKeyEvent(t *testing.T) {
-	uc := usecase.NewEditor(stubReader{text: "ab\ncd"})
+	uc := usecase.NewEditor(&stubReader{text: "ab\ncd"})
 	if err := uc.OpenFile("test.txt"); err != nil {
 		t.Fatalf("OpenFile() error = %v", err)
 	}
 
 	ev := &EditorView{uc: uc}
 
-	if !ev.handleKeyEvent(key.NameRightArrow) {
+	if !ev.handleKeyEvent(key.Event{Name: key.NameRightArrow}) {
 		t.Fatal("handleKeyEvent(right) = false, want true")
 	}
 	if got := uc.Cursor().Col; got != 1 {
 		t.Fatalf("cursor col after right = %d, want 1", got)
 	}
 
-	if !ev.handleKeyEvent(key.NameDownArrow) {
+	if !ev.handleKeyEvent(key.Event{Name: key.NameDownArrow}) {
 		t.Fatal("handleKeyEvent(down) = false, want true")
 	}
 	if got := uc.Cursor().Row; got != 1 {
 		t.Fatalf("cursor row after down = %d, want 1", got)
 	}
 
-	if !ev.handleKeyEvent(key.NameLeftArrow) {
+	if !ev.handleKeyEvent(key.Event{Name: key.NameLeftArrow}) {
 		t.Fatal("handleKeyEvent(left) = false, want true")
 	}
 	if got := uc.Cursor().Col; got != 0 {
 		t.Fatalf("cursor col after left = %d, want 0", got)
 	}
 
-	if !ev.handleKeyEvent(key.NameUpArrow) {
+	if !ev.handleKeyEvent(key.Event{Name: key.NameUpArrow}) {
 		t.Fatal("handleKeyEvent(up) = false, want true")
 	}
 	if got := uc.Cursor().Row; got != 0 {
 		t.Fatalf("cursor row after up = %d, want 0", got)
 	}
 
-	if !ev.handleKeyEvent(key.NameEnter) {
+	if !ev.handleKeyEvent(key.Event{Name: key.NameEnter}) {
 		t.Fatal("handleKeyEvent(enter) = false, want true")
 	}
 	if got := uc.Cursor().Row; got != 1 {
@@ -78,8 +78,32 @@ func TestHandleKeyEvent(t *testing.T) {
 	}
 }
 
+func TestHandleKeyEventSaveShortcut(t *testing.T) {
+	reader := &stubReader{text: "ab"}
+	uc := usecase.NewEditor(reader)
+	if err := uc.OpenFile("test.txt"); err != nil {
+		t.Fatalf("OpenFile() error = %v", err)
+	}
+	uc.InsertText("X")
+
+	ev := &EditorView{uc: uc}
+	if ev.handleKeyEvent(key.Event{Name: "S", Modifiers: key.ModShortcut}) {
+		t.Fatal("handleKeyEvent(save) = true, want false")
+	}
+
+	if reader.lastWritePath != "test.txt" {
+		t.Fatalf("lastWritePath = %q, want %q", reader.lastWritePath, "test.txt")
+	}
+	if reader.lastWriteContent != "Xab" {
+		t.Fatalf("lastWriteContent = %q, want %q", reader.lastWriteContent, "Xab")
+	}
+	if uc.IsDirty() {
+		t.Fatal("IsDirty() = true, want false after save shortcut")
+	}
+}
+
 func TestHandleTextInput(t *testing.T) {
-	uc := usecase.NewEditor(stubReader{text: "ab"})
+	uc := usecase.NewEditor(&stubReader{text: "ab"})
 	if err := uc.OpenFile("test.txt"); err != nil {
 		t.Fatalf("OpenFile() error = %v", err)
 	}
@@ -102,14 +126,18 @@ func TestHandleTextInput(t *testing.T) {
 }
 
 type stubReader struct {
-	text string
+	text             string
+	lastWritePath    string
+	lastWriteContent string
 }
 
 func (s stubReader) Read(string) (string, error) {
 	return s.text, nil
 }
 
-func (s stubReader) Write(string, string) error {
+func (s *stubReader) Write(path, content string) error {
+	s.lastWritePath = path
+	s.lastWriteContent = content
 	return nil
 }
 

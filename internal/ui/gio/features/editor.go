@@ -3,6 +3,7 @@ package features
 import (
 	"image"
 	"image/color"
+	"log"
 	"strconv"
 	"strings"
 
@@ -93,6 +94,7 @@ func (ev *EditorView) HandleKeyInput(gtx layout.Context) {
 			key.Filter{Focus: &ev.keyTag, Name: key.NameDeleteBackward},
 			key.Filter{Focus: &ev.keyTag, Name: key.NameEnter},
 			key.Filter{Focus: &ev.keyTag, Name: key.NameReturn},
+			key.Filter{Focus: &ev.keyTag, Name: "S", Required: key.ModShortcut},
 		)
 		if !ok {
 			break
@@ -105,7 +107,7 @@ func (ev *EditorView) HandleKeyInput(gtx layout.Context) {
 			if ke.State != key.Press {
 				continue
 			}
-			if ev.handleKeyEvent(ke.Name) {
+			if ev.handleKeyEvent(ke) {
 				ev.ensureCursorVisible()
 			}
 		case key.EditEvent:
@@ -234,8 +236,15 @@ func displayColumnForCursor(s string, limit, width int) int {
 	return column
 }
 
-func (ev *EditorView) handleKeyEvent(name key.Name) bool {
-	switch name {
+func (ev *EditorView) handleKeyEvent(evt key.Event) bool {
+	if evt.Name == "S" && evt.Modifiers.Contain(key.ModShortcut) {
+		if err := ev.uc.Save(); err != nil {
+			log.Printf("failed to save file: %v", err)
+		}
+		return false
+	}
+
+	switch evt.Name {
 	case key.NameUpArrow:
 		ev.uc.MoveCursorUp()
 	case key.NameDownArrow:
