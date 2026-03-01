@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -8,6 +10,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
+	"github.com/rm-ryou/gotor/internal/platform/fs"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 	"github.com/rm-ryou/gotor/internal/ui/gio/features"
 )
@@ -34,7 +37,16 @@ func New(explorerUC *usecase.Explorer) (*App, error) {
 	}
 
 	explorerView := features.NewExplorerView(th, explorerUC)
-	editorView := features.NewEditorView(th)
+
+	fileIO := fs.NewFileIO()
+	editorUC := usecase.NewEditor(fileIO)
+
+	explorerUC.OnFileSelected = func(path string) {
+		if err := editorUC.OpenFile(path); err != nil {
+			log.Printf("failed to open file: %v", err)
+		}
+	}
+	editorView := features.NewEditorView(th, editorUC)
 
 	return &App{
 		theme:  th,

@@ -3,6 +3,7 @@ package features
 import (
 	"image/color"
 	"strconv"
+	"strings"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -11,18 +12,23 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/rm-ryou/gotor/internal/core/usecase"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
 type EditorView struct {
 	theme *system.Theme
+	uc    *usecase.Editor
 	lines []string
 	list  widget.List
 }
 
-func NewEditorView(th *system.Theme) *EditorView {
+const tabWidth = 4
+
+func NewEditorView(th *system.Theme, uc *usecase.Editor) *EditorView {
 	return &EditorView{
 		theme: th,
+		uc:    uc,
 		lines: []string{},
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
@@ -34,24 +40,7 @@ func (ev *EditorView) Layout(gtx layout.Context) layout.Dimensions {
 	textColor := color.NRGBA{R: 212, G: 212, B: 212, A: 255}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
-	lines := []string{
-		"hoge",
-		"",
-		"fuga",
-		"abcdefg",
-		"",
-		"hijklmn",
-		"",
-		"opqrstu",
-		"",
-		"vwxyz",
-		"",
-		"ABCDEFG",
-		"",
-		"HIJKLMN",
-		"OPQRSTU",
-		"VWXYZ",
-	}
+	lines := ev.uc.Document().Lines()
 
 	numLines := len(lines)
 	lineWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(numLines))
@@ -85,6 +74,7 @@ func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []s
 
 func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lineText string, textColor color.NRGBA) layout.Dimensions {
 	lineNumColor := color.NRGBA{R: 100, G: 100, B: 100, A: 255}
+	displayText := expandTabs(lineText, tabWidth)
 
 	return layout.Flex{
 		Axis:      layout.Horizontal,
@@ -102,9 +92,34 @@ func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lin
 			})
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			lbl := material.Body2(ev.theme.Theme, lineText)
+			lbl := material.Body2(ev.theme.Theme, displayText)
 			lbl.Color = textColor
 			return lbl.Layout(gtx)
 		}),
 	)
+}
+
+func expandTabs(s string, width int) string {
+	if width <= 0 || !strings.ContainsRune(s, '\t') {
+		return s
+	}
+
+	var b strings.Builder
+	column := 0
+
+	for _, r := range s {
+		if r == '\t' {
+			spaces := width - (column % width)
+			for range spaces {
+				b.WriteByte(' ')
+			}
+			column += spaces
+			continue
+		}
+
+		b.WriteRune(r)
+		column++
+	}
+
+	return b.String()
 }
