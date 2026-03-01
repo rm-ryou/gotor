@@ -1,34 +1,60 @@
 package features
 
 import (
-	"fmt"
+	"image/color"
+	"strconv"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
-const editorLineNumberWidth = 48
-
-var editorPlaceholderLines = []string{
-	"hello, World!",
-}
-
 type EditorView struct {
 	theme *system.Theme
+	lines []string
+	list  widget.List
 }
 
 func NewEditorView(th *system.Theme) *EditorView {
 	return &EditorView{
 		theme: th,
+		lines: []string{},
+		list: widget.List{
+			List: layout.List{Axis: layout.Vertical},
+		},
 	}
 }
 
 func (ev *EditorView) Layout(gtx layout.Context) layout.Dimensions {
+	textColor := color.NRGBA{R: 212, G: 212, B: 212, A: 255}
 	gtx.Constraints.Min = gtx.Constraints.Max
+
+	lines := []string{
+		"hoge",
+		"",
+		"fuga",
+		"abcdefg",
+		"",
+		"hijklmn",
+		"",
+		"opqrstu",
+		"",
+		"vwxyz",
+		"",
+		"ABCDEFG",
+		"",
+		"HIJKLMN",
+		"OPQRSTU",
+		"VWXYZ",
+	}
+
+	numLines := len(lines)
+	lineWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(numLines))
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
@@ -38,41 +64,47 @@ func (ev *EditorView) Layout(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Min}
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			return layout.UniformInset(unit.Dp(16)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Vertical}.Layout(gtx, editorLineWidgets(ev)...)
+			return ev.layoutContent(gtx, lineWidth, lines, textColor)
+		}),
+	)
+}
+
+func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []string, textColor color.NRGBA) layout.Dimensions {
+	return layout.Inset{
+		Top: unit.Dp(8), Bottom: unit.Dp(8),
+		Left: unit.Dp(8), Right: unit.Dp(8),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return material.List(ev.theme.Theme, &ev.list).Layout(
+			gtx, len(lines),
+			func(gtx layout.Context, i int) layout.Dimensions {
+				return ev.layoutLine(gtx, lineWidth, i+1, lines[i], textColor)
+			},
+		)
+	})
+}
+
+func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lineText string, textColor color.NRGBA) layout.Dimensions {
+	lineNumColor := color.NRGBA{R: 100, G: 100, B: 100, A: 255}
+
+	return layout.Flex{
+		Axis:      layout.Horizontal,
+		Alignment: layout.Baseline,
+	}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			minWidth := lineWidth
+			gtx.Constraints.Min.X = minWidth
+
+			return layout.Inset{Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				lbl := material.Body2(ev.theme.Theme, strconv.Itoa(lineNum))
+				lbl.Color = lineNumColor
+				lbl.Alignment = text.End
+				return lbl.Layout(gtx)
 			})
 		}),
-	)
-}
-
-func (ev *EditorView) layoutLine(gtx layout.Context, lineNumber int, content string) layout.Dimensions {
-	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Baseline}.Layout(gtx,
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			width := gtx.Dp(unit.Dp(editorLineNumberWidth))
-			gtx.Constraints.Min.X = width
-			gtx.Constraints.Max.X = width
-
-			lbl := material.Body2(ev.theme.Theme, fmt.Sprintf("%d", lineNumber))
-			lbl.Color = ev.theme.Palette.Fg
-			return lbl.Layout(gtx)
-		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			lbl := material.Body1(ev.theme.Theme, content)
-			lbl.Color = ev.theme.Palette.Fg
+			lbl := material.Body2(ev.theme.Theme, lineText)
+			lbl.Color = textColor
 			return lbl.Layout(gtx)
 		}),
 	)
-}
-
-func editorLineWidgets(ev *EditorView) []layout.FlexChild {
-	children := make([]layout.FlexChild, 0, len(editorPlaceholderLines))
-	for i, line := range editorPlaceholderLines {
-		lineNumber := i + 1
-		content := line
-		children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return ev.layoutLine(gtx, lineNumber, content)
-		}))
-	}
-
-	return children
 }
