@@ -2,13 +2,21 @@ package usecase
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/rm-ryou/gotor/internal/core/domain/cursor"
 	"github.com/rm-ryou/gotor/internal/core/domain/document"
 )
 
+type FileIO interface {
+	document.Reader
+	document.Writer
+	document.Deleter
+}
+
 type Editor struct {
-	reader document.Reader
+	fileIO FileIO
 
 	doc      document.Document
 	cursor   *cursor.Cursor
@@ -16,9 +24,9 @@ type Editor struct {
 	dirty    bool
 }
 
-func NewEditor(r document.Reader) *Editor {
+func NewEditor(fio FileIO) *Editor {
 	return &Editor{
-		reader:   r,
+		fileIO:   fio,
 		doc:      document.New(),
 		cursor:   cursor.New(0, 0),
 		filePath: "",
@@ -50,7 +58,7 @@ func (e *Editor) NewFile() {
 }
 
 func (e *Editor) OpenFile(path string) error {
-	content, err := e.reader.Read(path)
+	content, err := e.fileIO.Read(path)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", path, err)
 	}
@@ -60,6 +68,62 @@ func (e *Editor) OpenFile(path string) error {
 	e.filePath = path
 	e.dirty = false
 
+	return nil
+}
+
+func (e *Editor) InsertText(text string) {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	if text == "" {
+		return
+	}
+
+	offset := e.cursorOffset()
+	e.doc.Insert(offset, text)
+	e.setCursorFromOffset(offset + len(text))
+	e.dirty = true
+}
+
+func (e *Editor) DeleteBackward() bool {
+	offset := e.cursorOffset()
+	if offset == 0 {
+		return false
+	}
+
+	start := previousRuneStart(e.doc.Text(), offset)
+	e.doc.Delete(start, offset)
+	e.setCursorFromOffset(start)
+	e.dirty = true
+	return true
+}
+
+func (e *Editor) Save() error {
+	if e.filePath == "" {
+		return fmt.Errorf("no file path set")
+	}
+	if err := e.fileIO.Write(e.filePath, e.doc.Text()); err != nil {
+		return fmt.Errorf("failed to save file %s: %w", e.filePath, err)
+	}
+	e.dirty = false
+	return nil
+}
+
+func (e *Editor) SaveAs(path string) error {
+	if err := e.fileIO.Write(path, e.doc.Text()); err != nil {
+		return fmt.Errorf("failed to save file %s: %w", path, err)
+	}
+	e.filePath = path
+	e.dirty = false
+	return nil
+}
+
+func (e *Editor) DeleteFile() error {
+	if e.filePath == "" {
+		return fmt.Errorf("no file path set")
+	}
+	if err := e.fileIO.Delete(e.filePath); err != nil {
+		return fmt.Errorf("failed to delete file %s: %w", e.filePath, err)
+	}
+	e.NewFile()
 	return nil
 }
 
@@ -109,4 +173,96 @@ func (e *Editor) MoveCursorToLineEnd() {
 	lineLen := len([]rune(e.doc.Line(e.cursor.Row)))
 	e.cursor.MoveToEndLine(lineLen)
 	e.clampCursor()
+}
+
+func (e *Editor) cursorOffset() int {
+	lines := e.doc.Lines()
+	if len(lines) == 0 {
+		return 0
+	}
+
+	row := e.cursor.Row
+	if row < 0 {
+		row = 0
+	}
+	if row >= len(lines) {
+		row = len(lines) - 1
+	}
+
+	offset := 0
+	for i := 0; i < row; i++ {
+		offset += len(lines[i]) + 1
+	}
+
+	return offset + byteOffsetForColumn(lines[row], e.cursor.Col)
+}
+
+func (e *Editor) setCursorFromOffset(offset int) {
+	if offset < 0 {
+		offset = 0
+	}
+
+	text := e.doc.Text()
+	if offset > len(text) {
+		offset = len(text)
+	}
+
+	row := 0
+	col := 0
+	read := 0
+
+	for _, r := range text {
+		if read >= offset {
+			break
+		}
+
+		if r == '\n' {
+			row++
+			col = 0
+		} else {
+			col++
+		}
+
+		read += utf8.RuneLen(r)
+	}
+
+	e.cursor.MoveTo(row, col)
+	e.clampCursor()
+}
+
+func byteOffsetForColumn(s string, col int) int {
+	if col <= 0 {
+		return 0
+	}
+
+	offset := 0
+	count := 0
+	for _, r := range s {
+		if count >= col {
+			break
+		}
+		offset += utf8.RuneLen(r)
+		count++
+	}
+
+	return offset
+}
+
+func previousRuneStart(s string, offset int) int {
+	if offset <= 0 {
+		return 0
+	}
+	if offset > len(s) {
+		offset = len(s)
+	}
+
+	start := 0
+	for i := range s {
+		if i >= offset {
+			break
+		}
+		start = i
+	}
+
+	return start
 }
