@@ -59,3 +59,43 @@ func Test_Read(t *testing.T) {
 		})
 	}
 }
+
+func Test_Write(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "write.txt")
+	fio := NewFileIO()
+
+	if err := fio.Write(path, "hello"); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	if got := string(data); got != "hello" {
+		t.Fatalf("file contents = %q, want %q", got, "hello")
+	}
+}
+
+func Test_Delete(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "delete.txt")
+	if err := os.WriteFile(path, []byte("hello"), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	fio := NewFileIO()
+	if err := fio.Delete(path); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected file to be removed, stat err = %v", err)
+	}
+}
