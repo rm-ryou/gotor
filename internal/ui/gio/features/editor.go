@@ -21,12 +21,13 @@ import (
 )
 
 type EditorView struct {
-	theme   *system.Theme
-	uc      *usecase.Editor
-	lines   []string
-	list    widget.List
-	mode    EditorDisplayMode
-	xOffset int
+	theme             *system.Theme
+	uc                *usecase.Editor
+	lines             []string
+	list              widget.List
+	mode              EditorDisplayMode
+	xOffset           int
+	textViewportWidth int
 
 	keyTag  struct{}
 	focused bool
@@ -134,6 +135,7 @@ func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []s
 		Top: editorInsetTop, Bottom: editorInsetBottom,
 		Left: editorInsetLeft,
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		ev.textViewportWidth = gtx.Constraints.Max.X - lineWidth - gtx.Dp(unit.Dp(10))
 		itemCount := len(lines) + 1
 		return material.List(ev.theme.Theme, &ev.list).Layout(
 			gtx, itemCount,
@@ -176,10 +178,15 @@ func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lin
 			if ev.mode == EditorDisplayModeHorizontalScroll {
 				defer clip.Rect(image.Rectangle{Max: image.Pt(gtx.Constraints.Max.X, rowHeight)}).Push(gtx.Ops).Pop()
 				defer op.Offset(image.Pt(-ev.xOffset, 0)).Push(gtx.Ops).Pop()
+				textWidth := ev.measureTextWidth(gtx, displayText)
+				if textWidth > gtx.Constraints.Max.X {
+					gtx.Constraints.Max.X = textWidth
+				}
 			}
 			lbl := material.Body2(ev.theme.Theme, displayText)
 			lbl.Color = textColor
 			lbl.MaxLines = 1
+			lbl.Truncator = "\u200b"
 			if ev.mode == EditorDisplayModeWrap {
 				lbl.WrapPolicy = text.WrapWords
 			}
@@ -336,13 +343,11 @@ func (ev *EditorView) ensureCursorVisible(gtx layout.Context) {
 		return
 	}
 	cursorX := ev.measureTextWidth(gtx, displayPrefixForCursor(ev.uc.Document().Line(cursorRow), ev.uc.Cursor().Col, tabWidth))
-	lineNumWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(ev.uc.Document().LineCount()))
-	viewportWidth := gtx.Constraints.Max.X - gtx.Dp(editorInsetLeft) - gtx.Dp(lineNumberGap) - lineNumWidth
 	if cursorX < ev.xOffset {
 		ev.xOffset = cursorX
 	}
-	if viewportWidth > 0 && cursorX-ev.xOffset > viewportWidth {
-		ev.xOffset = cursorX - viewportWidth
+	if ev.textViewportWidth > 0 && cursorX-ev.xOffset > ev.textViewportWidth {
+		ev.xOffset = cursorX - ev.textViewportWidth
 	}
 }
 
