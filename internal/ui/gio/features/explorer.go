@@ -28,6 +28,8 @@ type ExplorerView struct {
 	list     widget.List
 	hList    widget.List
 	clickers map[*domain.Node]*widget.Clickable
+
+	OnError func(error)
 }
 
 func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
@@ -76,12 +78,23 @@ func (ev *ExplorerView) HandleNodeClicks(gtx layout.Context) {
 		c := ev.clickableFor(node)
 		if c.Clicked(gtx) {
 			if node.IsDir {
-				_ = ev.uc.ToggleNode(node)
+				if err := ev.uc.ToggleNode(node); err != nil {
+					ev.reportError(err)
+				}
 			} else {
-				ev.uc.SelectFile(node)
+				if err := ev.uc.SelectFile(node); err != nil {
+					ev.reportError(err)
+				}
 			}
 		}
 	}
+}
+
+func (ev *ExplorerView) reportError(err error) {
+	if err == nil || ev.OnError == nil {
+		return
+	}
+	ev.OnError(err)
 }
 
 func (ev *ExplorerView) syncClickables(nodes []*domain.Node) {
@@ -220,11 +233,11 @@ func (ev *ExplorerView) measureTextWidth(gtx layout.Context, value string) int {
 			Min: image.Point{},
 			Max: image.Pt(1_000_000, 1_000_000),
 		},
-		Metric:      gtx.Metric,
-		Now:         gtx.Now,
-		Locale:      gtx.Locale,
-		Values:      gtx.Values,
-		Ops:         &ops,
+		Metric: gtx.Metric,
+		Now:    gtx.Now,
+		Locale: gtx.Locale,
+		Values: gtx.Values,
+		Ops:    &ops,
 	}
 
 	lbl := material.Body2(ev.theme.Theme, value)

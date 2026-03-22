@@ -3,7 +3,6 @@ package features
 import (
 	"image"
 	"image/color"
-	"log"
 	"strconv"
 	"strings"
 
@@ -28,6 +27,8 @@ type EditorView struct {
 
 	keyTag  struct{}
 	focused bool
+
+	OnError func(error)
 }
 
 const (
@@ -239,7 +240,7 @@ func displayColumnForCursor(s string, limit, width int) int {
 func (ev *EditorView) handleKeyEvent(evt key.Event) bool {
 	if evt.Name == "S" && evt.Modifiers.Contain(key.ModShortcut) {
 		if err := ev.uc.Save(); err != nil {
-			log.Printf("failed to save file: %v", err)
+			ev.reportError(err)
 		}
 		return false
 	}
@@ -262,6 +263,13 @@ func (ev *EditorView) handleKeyEvent(evt key.Event) bool {
 	}
 
 	return true
+}
+
+func (ev *EditorView) reportError(err error) {
+	if err == nil || ev.OnError == nil {
+		return
+	}
+	ev.OnError(err)
 }
 
 func (ev *EditorView) handleTextInput(text string) bool {
