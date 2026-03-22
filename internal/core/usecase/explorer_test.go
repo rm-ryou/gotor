@@ -177,3 +177,34 @@ func Test_ToggleNode(t *testing.T) {
 		})
 	}
 }
+
+func Test_SelectFile_ReturnsUserFacingErrorAndClearsSelection(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	file := &domain.Node{Name: "main.go", Path: root + "/main.go", IsDir: false, Depth: 1}
+
+	ctrl := gomock.NewController(t)
+	mockFS := mocks.NewMockFSReader(ctrl)
+	mockFS.EXPECT().ReadDir(root, 1).Return([]*domain.Node{file}, nil)
+
+	uc, err := NewExplorer(mockFS, root)
+	if err != nil {
+		t.Fatalf("NewExplorer() error = %v", err)
+	}
+
+	uc.OnFileSelected = func(string) error {
+		return errors.New("permission denied")
+	}
+
+	err = uc.SelectFile(file)
+	if err == nil {
+		t.Fatal("SelectFile() error = nil, want error")
+	}
+	if got := MessageFor(err); got != "Failed to open the selected file." {
+		t.Fatalf("MessageFor(error) = %q, want %q", got, "Failed to open the selected file.")
+	}
+	if got := uc.Tree().SelectedPath(); got != "" {
+		t.Fatalf("Tree().SelectedPath() = %q, want empty", got)
+	}
+}

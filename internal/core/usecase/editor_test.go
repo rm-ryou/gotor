@@ -1,6 +1,9 @@
 package usecase
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestEditorInsertTextAndDeleteBackward(t *testing.T) {
 	t.Parallel()
@@ -71,8 +74,20 @@ func TestEditorSaveWithoutPath(t *testing.T) {
 	t.Parallel()
 
 	editor := NewEditor(&stubFileIO{})
-	if err := editor.Save(); err == nil {
+	err := editor.Save()
+	if err == nil {
 		t.Fatal("Save() error = nil, want error")
+	}
+	if got := MessageFor(err); got != "No file is selected for saving." {
+		t.Fatalf("MessageFor(error) = %q, want %q", got, "No file is selected for saving.")
+	}
+}
+
+func TestMessageForFallback(t *testing.T) {
+	t.Parallel()
+
+	if got := MessageFor(errors.New("boom")); got != "An unexpected error occurred." {
+		t.Fatalf("MessageFor(unexpected) = %q, want %q", got, "An unexpected error occurred.")
 	}
 }
 

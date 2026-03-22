@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"unicode/utf8"
 
@@ -60,7 +60,7 @@ func (e *Editor) NewFile() {
 func (e *Editor) OpenFile(path string) error {
 	content, err := e.fileIO.Read(path)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", path, err)
+		return NewError("Failed to open the file.", err)
 	}
 
 	e.doc = document.NewFromText(content)
@@ -98,10 +98,10 @@ func (e *Editor) DeleteBackward() bool {
 
 func (e *Editor) Save() error {
 	if e.filePath == "" {
-		return fmt.Errorf("no file path set")
+		return NewError("No file is selected for saving.", errors.New("no file path set"))
 	}
 	if err := e.fileIO.Write(e.filePath, e.doc.Text()); err != nil {
-		return fmt.Errorf("failed to save file %s: %w", e.filePath, err)
+		return NewError("Failed to save the file.", err)
 	}
 	e.dirty = false
 	return nil
@@ -109,7 +109,7 @@ func (e *Editor) Save() error {
 
 func (e *Editor) SaveAs(path string) error {
 	if err := e.fileIO.Write(path, e.doc.Text()); err != nil {
-		return fmt.Errorf("failed to save file %s: %w", path, err)
+		return NewError("Failed to save the file.", err)
 	}
 	e.filePath = path
 	e.dirty = false
@@ -118,10 +118,10 @@ func (e *Editor) SaveAs(path string) error {
 
 func (e *Editor) DeleteFile() error {
 	if e.filePath == "" {
-		return fmt.Errorf("no file path set")
+		return NewError("No file is selected for deletion.", errors.New("no file path set"))
 	}
 	if err := e.fileIO.Delete(e.filePath); err != nil {
-		return fmt.Errorf("failed to delete file %s: %w", e.filePath, err)
+		return NewError("Failed to delete the file.", err)
 	}
 	e.NewFile()
 	return nil

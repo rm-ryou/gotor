@@ -1,6 +1,7 @@
 package features
 
 import (
+	"errors"
 	"testing"
 
 	"gioui.org/io/key"
@@ -125,6 +126,30 @@ func TestHandleTextInput(t *testing.T) {
 	}
 }
 
+func TestHandleKeyEventSaveShortcutReportsError(t *testing.T) {
+	uc := usecase.NewEditor(&stubReaderWithError{text: "ab", writeErr: errors.New("disk full")})
+	if err := uc.OpenFile("test.txt"); err != nil {
+		t.Fatalf("OpenFile() error = %v", err)
+	}
+
+	var reported error
+	ev := &EditorView{
+		uc: uc,
+		OnError: func(err error) {
+			reported = err
+		},
+	}
+
+	ev.handleKeyEvent(key.Event{Name: "S", Modifiers: key.ModShortcut})
+
+	if reported == nil {
+		t.Fatal("reported error = nil, want error")
+	}
+	if got := usecase.MessageFor(reported); got != "Failed to save the file." {
+		t.Fatalf("MessageFor(reported) = %q, want %q", got, "Failed to save the file.")
+	}
+}
+
 type stubReader struct {
 	text             string
 	lastWritePath    string
@@ -142,5 +167,22 @@ func (s *stubReader) Write(path, content string) error {
 }
 
 func (s stubReader) Delete(string) error {
+	return nil
+}
+
+type stubReaderWithError struct {
+	text     string
+	writeErr error
+}
+
+func (s stubReaderWithError) Read(string) (string, error) {
+	return s.text, nil
+}
+
+func (s *stubReaderWithError) Write(string, string) error {
+	return s.writeErr
+}
+
+func (s stubReaderWithError) Delete(string) error {
 	return nil
 }
