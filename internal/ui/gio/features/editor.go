@@ -13,16 +13,17 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
-	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
+	"github.com/rm-ryou/gotor/internal/ui/gio/config"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
 type EditorView struct {
 	theme             *system.Theme
 	uc                *usecase.Editor
+	cfg               config.Editor
 	lines             []string
 	list              widget.List
 	mode              EditorDisplayMode
@@ -42,22 +43,13 @@ const (
 	EditorDisplayModeHorizontalScroll
 )
 
-const (
-	tabWidth          = 4
-	editorInsetTop    = unit.Dp(8)
-	editorInsetBottom = unit.Dp(8)
-	editorInsetLeft   = unit.Dp(8)
-	lineNumberGap     = unit.Dp(10)
-	cursorLineHeight  = unit.Dp(22)
-	cursorStrokeWidth = unit.Dp(1)
-)
-
-func NewEditorView(th *system.Theme, uc *usecase.Editor) *EditorView {
+func NewEditorView(th *system.Theme, uc *usecase.Editor, cfg config.Editor) *EditorView {
 	return &EditorView{
 		theme: th,
 		uc:    uc,
+		cfg:   cfg,
 		lines: []string{},
-		mode:  EditorDisplayModeHorizontalScroll,
+		mode:  EditorDisplayMode(cfg.DefaultMode),
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
@@ -65,13 +57,13 @@ func NewEditorView(th *system.Theme, uc *usecase.Editor) *EditorView {
 }
 
 func (ev *EditorView) Layout(gtx layout.Context) layout.Dimensions {
-	textColor := color.NRGBA{R: 212, G: 212, B: 212, A: 255}
+	textColor := ev.cfg.TextColor
 	gtx.Constraints.Min = gtx.Constraints.Max
 
 	lines := ev.uc.Document().Lines()
 
 	numLines := len(lines)
-	lineWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(numLines))
+	lineWidth := gtx.Dp(ev.cfg.LineNumberDigit) * len(strconv.Itoa(numLines))
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
@@ -132,16 +124,16 @@ func (ev *EditorView) HandleKeyInput(gtx layout.Context) {
 
 func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []string, textColor color.NRGBA) layout.Dimensions {
 	return layout.Inset{
-		Top: editorInsetTop, Bottom: editorInsetBottom,
-		Left: editorInsetLeft,
+		Top: ev.cfg.InsetTop, Bottom: ev.cfg.InsetBottom,
+		Left: ev.cfg.InsetLeft,
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		ev.textViewportWidth = gtx.Constraints.Max.X - lineWidth - gtx.Dp(unit.Dp(10))
+		ev.textViewportWidth = gtx.Constraints.Max.X - lineWidth - gtx.Dp(ev.cfg.LineNumberPadRight)
 		itemCount := len(lines) + 1
 		return material.List(ev.theme.Theme, &ev.list).Layout(
 			gtx, itemCount,
 			func(gtx layout.Context, i int) layout.Dimensions {
 				if i == len(lines) {
-					h := gtx.Dp(cursorLineHeight)
+					h := gtx.Dp(ev.cfg.LineHeight)
 					return layout.Dimensions{Size: image.Pt(0, h)}
 				}
 				return ev.layoutLine(gtx, lineWidth, i+1, lines[i], textColor)
@@ -151,9 +143,9 @@ func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []s
 }
 
 func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lineText string, textColor color.NRGBA) layout.Dimensions {
-	lineNumColor := color.NRGBA{R: 100, G: 100, B: 100, A: 255}
-	displayText := expandTabs(lineText, tabWidth)
-	rowHeight := gtx.Dp(cursorLineHeight)
+	lineNumColor := ev.cfg.LineNumberColor
+	displayText := expandTabs(lineText, ev.cfg.TabWidth)
+	rowHeight := gtx.Dp(ev.cfg.LineHeight)
 
 	gtx.Constraints.Min.Y = rowHeight
 	gtx.Constraints.Max.Y = rowHeight
@@ -166,7 +158,7 @@ func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lin
 			minWidth := lineWidth
 			gtx.Constraints.Min.X = minWidth
 
-			return layout.Inset{Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Right: ev.cfg.LineNumberPadRight}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				lbl := material.Body2(ev.theme.Theme, strconv.Itoa(lineNum))
 				lbl.Color = lineNumColor
 				lbl.Alignment = text.End
@@ -202,26 +194,26 @@ func (ev *EditorView) layoutCursor(gtx layout.Context) layout.Dimensions {
 		return layout.Dimensions{}
 	}
 
-	cursorColor := color.NRGBA{R: 120, G: 200, B: 255, A: 180}
-	lineNumWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(len(lines)))
-	lineHeight := gtx.Dp(cursorLineHeight)
-	leftPadding := gtx.Dp(editorInsetLeft)
-	lineNumberPadding := gtx.Dp(lineNumberGap)
-	cursorWidth := gtx.Dp(cursorStrokeWidth)
+	cursorColor := ev.cfg.CursorColor
+	lineNumWidth := gtx.Dp(ev.cfg.LineNumberDigit) * len(strconv.Itoa(len(lines)))
+	lineHeight := gtx.Dp(ev.cfg.LineHeight)
+	leftPadding := gtx.Dp(ev.cfg.InsetLeft)
+	lineNumberPadding := gtx.Dp(ev.cfg.LineNumberGap)
+	cursorWidth := gtx.Dp(ev.cfg.CursorStrokeWidth)
 	cursorHeight := gtx.Sp(ev.theme.TextSize)
 
 	rowOffset := cursor.Row - ev.list.Position.First
 	x := leftPadding + lineNumWidth + lineNumberPadding +
-		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, tabWidth)) - ev.xOffset
-	y := gtx.Dp(editorInsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2 - 1
+		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, ev.cfg.TabWidth)) - ev.xOffset
+	y := gtx.Dp(ev.cfg.InsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2 - 1
 	contentRect := image.Rectangle{
 		Min: image.Point{
 			X: leftPadding + lineNumWidth + lineNumberPadding,
-			Y: gtx.Dp(editorInsetTop),
+			Y: gtx.Dp(ev.cfg.InsetTop),
 		},
 		Max: image.Point{
 			X: gtx.Constraints.Max.X,
-			Y: gtx.Constraints.Max.Y - gtx.Dp(editorInsetBottom),
+			Y: gtx.Constraints.Max.Y - gtx.Dp(ev.cfg.InsetBottom),
 		},
 	}
 
@@ -342,7 +334,7 @@ func (ev *EditorView) ensureCursorVisible(gtx layout.Context) {
 	if ev.mode != EditorDisplayModeHorizontalScroll {
 		return
 	}
-	cursorX := ev.measureTextWidth(gtx, displayPrefixForCursor(ev.uc.Document().Line(cursorRow), ev.uc.Cursor().Col, tabWidth))
+	cursorX := ev.measureTextWidth(gtx, displayPrefixForCursor(ev.uc.Document().Line(cursorRow), ev.uc.Cursor().Col, ev.cfg.TabWidth))
 	if cursorX < ev.xOffset {
 		ev.xOffset = cursorX
 	}
