@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,13 +13,13 @@ type Explorer struct {
 	fs   domain.FSReader
 	tree *domain.Tree
 
-	OnFileSelected func(path string)
+	OnFileSelected func(path string) error
 }
 
 func NewExplorer(fs domain.FSReader, rootPath string) (*Explorer, error) {
 	absRoot, err := resolveRoot(rootPath)
 	if err != nil {
-		return nil, fmt.Errorf("explorer usecase: resolve root: %w", err)
+		return nil, NewError("Failed to open the workspace.", err)
 	}
 
 	root := &domain.Node{
@@ -31,7 +32,7 @@ func NewExplorer(fs domain.FSReader, rootPath string) (*Explorer, error) {
 
 	children, err := fs.ReadDir(absRoot, 1)
 	if err != nil {
-		return nil, fmt.Errorf("explorer usecase: initial load %s: %w", absRoot, err)
+		return nil, NewError("Failed to load the workspace.", err)
 	}
 	root.Children = children
 
@@ -55,7 +56,7 @@ func (e *Explorer) ToggleNode(node *domain.Node) error {
 	if !node.Expanded && len(node.Children) == 0 {
 		loaded, err := e.fs.ReadDir(node.Path, node.Depth+1)
 		if err != nil {
-			return fmt.Errorf("explorer usecase: read dir %s: %w", node.Path, err)
+			return NewError("Failed to load the folder.", err)
 		}
 		children = loaded
 	}
@@ -64,14 +65,19 @@ func (e *Explorer) ToggleNode(node *domain.Node) error {
 	return nil
 }
 
-func (e *Explorer) SelectFile(node *domain.Node) {
+func (e *Explorer) SelectFile(node *domain.Node) error {
 	if node.IsDir {
-		return
+		return nil
 	}
 	e.tree.Select(node)
 	if e.OnFileSelected != nil {
-		e.OnFileSelected(node.Path)
+		if err := e.OnFileSelected(node.Path); err != nil {
+			e.tree.ClearSelection()
+			return NewError("Failed to open the selected file.", err)
+		}
 	}
+
+	return nil
 }
 
 func (e *Explorer) ClearSelection() {
@@ -81,7 +87,7 @@ func (e *Explorer) ClearSelection() {
 func (e *Explorer) ChangeRoot(path string) error {
 	absPath, err := resolveRoot(path)
 	if err != nil {
-		return fmt.Errorf("explorer usecase: resolve root: %w", err)
+		return NewError("Failed to change the workspace.", err)
 	}
 
 	root := &domain.Node{
@@ -93,7 +99,7 @@ func (e *Explorer) ChangeRoot(path string) error {
 	}
 	children, err := e.fs.ReadDir(absPath, 1)
 	if err != nil {
-		return fmt.Errorf("explorer usecase: read dir %s: %w", absPath, err)
+		return NewError("Failed to load the workspace.", err)
 	}
 	root.Children = children
 
@@ -120,7 +126,7 @@ func resolveRoot(path string) (string, error) {
 		return "", err
 	}
 	if !info.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", abs)
+		return "", errors.New("path is not a directory")
 	}
 
 	return abs, nil
