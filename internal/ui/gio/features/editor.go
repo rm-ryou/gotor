@@ -9,6 +9,7 @@ import (
 	"gioui.org/io/event"
 	"gioui.org/io/key"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
@@ -38,7 +39,6 @@ const (
 	editorInsetLeft   = unit.Dp(8)
 	lineNumberGap     = unit.Dp(10)
 	cursorLineHeight  = unit.Dp(22)
-	cursorCharWidth   = unit.Dp(8)
 	cursorStrokeWidth = unit.Dp(1)
 )
 
@@ -176,16 +176,14 @@ func (ev *EditorView) layoutCursor(gtx layout.Context) layout.Dimensions {
 	cursorColor := color.NRGBA{R: 120, G: 200, B: 255, A: 180}
 	lineNumWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(len(lines)))
 	lineHeight := gtx.Dp(cursorLineHeight)
-	charWidth := gtx.Dp(cursorCharWidth)
 	leftPadding := gtx.Dp(editorInsetLeft)
 	lineNumberPadding := gtx.Dp(lineNumberGap)
 	cursorWidth := gtx.Dp(cursorStrokeWidth)
 	cursorHeight := lineHeight * 3 / 4
 
-	visibleColumn := displayColumnForCursor(lines[cursor.Row], cursor.Col, tabWidth)
 	rowOffset := cursor.Row - ev.list.Position.First
-
-	x := leftPadding + lineNumWidth + lineNumberPadding + (visibleColumn * charWidth)
+	x := leftPadding + lineNumWidth + lineNumberPadding +
+		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, tabWidth))
 	y := gtx.Dp(editorInsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2
 	contentRect := image.Rectangle{
 		Min: image.Point{
@@ -235,6 +233,20 @@ func displayColumnForCursor(s string, limit, width int) int {
 	}
 
 	return column
+}
+
+func displayPrefixForCursor(s string, limit, width int) string {
+	if limit <= 0 {
+		return ""
+	}
+	return expandTabs(string([]rune(s)[:limit]), width)
+}
+
+func (ev *EditorView) measureTextWidth(gtx layout.Context, value string) int {
+	var ops op.Ops
+	lbl := material.Body2(ev.theme.Theme, value)
+	lbl.MaxLines = 1
+	return lbl.Layout(layout.Context{Constraints: layout.Constraints{Max: image.Pt(1_000_000, 1_000_000)}, Metric: gtx.Metric, Now: gtx.Now, Locale: gtx.Locale, Values: gtx.Values, Ops: &ops}).Size.X
 }
 
 func (ev *EditorView) handleKeyEvent(evt key.Event) bool {
