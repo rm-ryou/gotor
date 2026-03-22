@@ -124,9 +124,14 @@ func (ev *EditorView) layoutContent(gtx layout.Context, lineWidth int, lines []s
 		Top: editorInsetTop, Bottom: editorInsetBottom,
 		Left: editorInsetLeft,
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		itemCount := len(lines) + 1
 		return material.List(ev.theme.Theme, &ev.list).Layout(
-			gtx, len(lines),
+			gtx, itemCount,
 			func(gtx layout.Context, i int) layout.Dimensions {
+				if i == len(lines) {
+					h := gtx.Dp(cursorLineHeight)
+					return layout.Dimensions{Size: image.Pt(0, h)}
+				}
 				return ev.layoutLine(gtx, lineWidth, i+1, lines[i], textColor)
 			},
 		)
