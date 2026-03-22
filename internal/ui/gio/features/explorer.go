@@ -5,8 +5,10 @@ import (
 	"image/color"
 
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -24,6 +26,7 @@ type ExplorerView struct {
 	uc       *usecase.Explorer
 	layout   *designlayout.Explorer
 	list     widget.List
+	hList    widget.List
 	clickers map[*domain.Node]*widget.Clickable
 }
 
@@ -35,6 +38,9 @@ func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
+		hList: widget.List{
+			List: layout.List{Axis: layout.Horizontal},
+		},
 		clickers: make(map[*domain.Node]*widget.Clickable),
 	}
 }
@@ -45,12 +51,19 @@ func (ev *ExplorerView) Layout(gtx layout.Context) layout.Dimensions {
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			return material.List(ev.theme.Theme, &ev.list).Layout(
-				gtx, len(nodes),
-				func(gtx layout.Context, i int) layout.Dimensions {
-					return ev.layoutNode(gtx, nodes[i])
-				},
-			)
+			contentWidth := ev.measureContentWidth(gtx, nodes)
+
+			return ev.hList.List.Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+				gtx.Constraints.Min.X = contentWidth
+				gtx.Constraints.Max.X = contentWidth
+
+				return ev.list.List.Layout(
+					gtx, len(nodes),
+					func(gtx layout.Context, i int) layout.Dimensions {
+						return ev.layoutNode(gtx, nodes[i])
+					},
+				)
+			})
 		}),
 	)
 }
@@ -123,9 +136,11 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 							return ev.layoutIcon(gtx, node)
 						}),
 						layout.Rigid(layout.Spacer{Width: unit.Dp(nodeGap)}.Layout),
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							lbl := material.Body2(ev.theme.Theme, node.Name)
 							lbl.Color = ev.theme.Palette.Fg
+							lbl.MaxLines = 1
+							lbl.WrapPolicy = text.WrapWords
 							return lbl.Layout(gtx)
 						}),
 					)
@@ -175,4 +190,46 @@ func (ev *ExplorerView) layoutGlyph(gtx layout.Context, glyph string, c color.NR
 	lbl.Color = c
 
 	return layout.Center.Layout(gtx, lbl.Layout)
+}
+
+func (ev *ExplorerView) measureContentWidth(gtx layout.Context, nodes []*domain.Node) int {
+	maxWidth := 0
+
+	for _, node := range nodes {
+		width := ev.measureNodeWidth(gtx, node)
+		if width > maxWidth {
+			maxWidth = width
+		}
+	}
+
+	return maxWidth
+}
+
+func (ev *ExplorerView) measureNodeWidth(gtx layout.Context, node *domain.Node) int {
+	width := gtx.Dp(ev.layout.Indent(node.Depth))
+	width += gtx.Dp(ev.layout.RowHeight()) * 2
+	width += gtx.Dp(unit.Dp(nodeGap))
+	width += ev.measureTextWidth(gtx, node.Name)
+	return width
+}
+
+func (ev *ExplorerView) measureTextWidth(gtx layout.Context, value string) int {
+	var ops op.Ops
+	measureGtx := layout.Context{
+		Constraints: layout.Constraints{
+			Min: image.Point{},
+			Max: image.Pt(1_000_000, 1_000_000),
+		},
+		Metric:      gtx.Metric,
+		Now:         gtx.Now,
+		Locale:      gtx.Locale,
+		Values:      gtx.Values,
+		Ops:         &ops,
+	}
+
+	lbl := material.Body2(ev.theme.Theme, value)
+	lbl.MaxLines = 1
+	lbl.WrapPolicy = text.WrapWords
+
+	return lbl.Layout(measureGtx).Size.X
 }
