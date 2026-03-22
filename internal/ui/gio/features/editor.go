@@ -179,12 +179,12 @@ func (ev *EditorView) layoutCursor(gtx layout.Context) layout.Dimensions {
 	leftPadding := gtx.Dp(editorInsetLeft)
 	lineNumberPadding := gtx.Dp(lineNumberGap)
 	cursorWidth := gtx.Dp(cursorStrokeWidth)
-	cursorHeight := lineHeight * 3 / 4
+	cursorHeight := gtx.Sp(ev.theme.TextSize)
 
 	rowOffset := cursor.Row - ev.list.Position.First
 	x := leftPadding + lineNumWidth + lineNumberPadding +
 		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, tabWidth))
-	y := gtx.Dp(editorInsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2
+	y := gtx.Dp(editorInsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2 - 1
 	contentRect := image.Rectangle{
 		Min: image.Point{
 			X: leftPadding + lineNumWidth + lineNumberPadding,
