@@ -9,10 +9,10 @@ type Explorer struct {
 	rowHeight      int
 }
 
-func NewExplorer(textSize int) *Explorer {
+func NewExplorer(textSize, indentPerDepth, rowHeightDelta int) *Explorer {
 	return &Explorer{
-		indentPerDepth: DefaultIndentPerDepth,
-		rowHeight:      textSize + 2,
+		indentPerDepth: indentPerDepth,
+		rowHeight:      textSize + rowHeightDelta,
 	}
 }
 

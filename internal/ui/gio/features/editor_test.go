@@ -6,6 +6,7 @@ import (
 
 	"gioui.org/io/key"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
+	"github.com/rm-ryou/gotor/internal/ui/gio/config"
 )
 
 func TestDisplayColumnForCursor(t *testing.T) {
@@ -24,9 +25,9 @@ func TestDisplayColumnForCursor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := displayColumnForCursor(tt.line, tt.limit, tabWidth)
+			got := displayColumnForCursor(tt.line, tt.limit, config.Default().Editor.TabWidth)
 			if got != tt.want {
-				t.Fatalf("displayColumnForCursor(%q, %d, %d) = %d, want %d", tt.line, tt.limit, tabWidth, got, tt.want)
+				t.Fatalf("displayColumnForCursor(%q, %d, %d) = %d, want %d", tt.line, tt.limit, config.Default().Editor.TabWidth, got, tt.want)
 			}
 		})
 	}

@@ -9,21 +9,20 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
-	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	domain "github.com/rm-ryou/gotor/internal/core/domain/explorer"
 	"github.com/rm-ryou/gotor/internal/core/usecase"
 	"github.com/rm-ryou/gotor/internal/ui/assets/icon"
+	"github.com/rm-ryou/gotor/internal/ui/gio/config"
 	designlayout "github.com/rm-ryou/gotor/internal/ui/gio/design/layout"
 	"github.com/rm-ryou/gotor/internal/ui/gio/design/system"
 )
 
-const nodeGap = 4
-
 type ExplorerView struct {
 	theme    *system.Theme
 	uc       *usecase.Explorer
+	cfg      config.Explorer
 	layout   *designlayout.Explorer
 	list     widget.List
 	hList    widget.List
@@ -32,11 +31,12 @@ type ExplorerView struct {
 	OnError func(error)
 }
 
-func NewExplorerView(th *system.Theme, uc *usecase.Explorer) *ExplorerView {
+func NewExplorerView(th *system.Theme, uc *usecase.Explorer, cfg config.Explorer) *ExplorerView {
 	return &ExplorerView{
 		theme:  th,
 		uc:     uc,
-		layout: designlayout.NewExplorer(system.DefaultTextSize),
+		cfg:    cfg,
+		layout: designlayout.NewExplorer(int(th.TextSize), cfg.IndentPerDepth, cfg.RowHeightDelta),
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
@@ -148,7 +148,7 @@ func (ev *ExplorerView) layoutNode(gtx layout.Context, node *domain.Node) layout
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return ev.layoutIcon(gtx, node)
 						}),
-						layout.Rigid(layout.Spacer{Width: unit.Dp(nodeGap)}.Layout),
+						layout.Rigid(layout.Spacer{Width: ev.cfg.NodeGap}.Layout),
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							lbl := material.Body2(ev.theme.Theme, node.Name)
 							lbl.Color = ev.theme.Palette.Fg
@@ -221,7 +221,7 @@ func (ev *ExplorerView) measureContentWidth(gtx layout.Context, nodes []*domain.
 func (ev *ExplorerView) measureNodeWidth(gtx layout.Context, node *domain.Node) int {
 	width := gtx.Dp(ev.layout.Indent(node.Depth))
 	width += gtx.Dp(ev.layout.RowHeight()) * 2
-	width += gtx.Dp(unit.Dp(nodeGap))
+	width += gtx.Dp(ev.cfg.NodeGap)
 	width += ev.measureTextWidth(gtx, node.Name)
 	return width
 }
