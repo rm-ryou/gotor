@@ -173,9 +173,16 @@ func (ev *EditorView) layoutLine(gtx layout.Context, lineWidth, lineNum int, lin
 			})
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			if ev.mode == EditorDisplayModeHorizontalScroll {
+				defer clip.Rect(image.Rectangle{Max: image.Pt(gtx.Constraints.Max.X, rowHeight)}).Push(gtx.Ops).Pop()
+				defer op.Offset(image.Pt(-ev.xOffset, 0)).Push(gtx.Ops).Pop()
+			}
 			lbl := material.Body2(ev.theme.Theme, displayText)
 			lbl.Color = textColor
 			lbl.MaxLines = 1
+			if ev.mode == EditorDisplayModeWrap {
+				lbl.WrapPolicy = text.WrapWords
+			}
 			return lbl.Layout(gtx)
 		}),
 	)
