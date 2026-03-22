@@ -21,11 +21,12 @@ import (
 )
 
 type EditorView struct {
-	theme *system.Theme
-	uc    *usecase.Editor
-	lines []string
-	list  widget.List
-	mode  EditorDisplayMode
+	theme   *system.Theme
+	uc      *usecase.Editor
+	lines   []string
+	list    widget.List
+	mode    EditorDisplayMode
+	xOffset int
 
 	keyTag  struct{}
 	focused bool
@@ -118,11 +119,11 @@ func (ev *EditorView) HandleKeyInput(gtx layout.Context) {
 				continue
 			}
 			if ev.handleKeyEvent(ke) {
-				ev.ensureCursorVisible()
+				ev.ensureCursorVisible(gtx)
 			}
 		case key.EditEvent:
 			if ev.handleTextInput(ke.Text) {
-				ev.ensureCursorVisible()
+				ev.ensureCursorVisible(gtx)
 			}
 		}
 	}
@@ -197,7 +198,7 @@ func (ev *EditorView) layoutCursor(gtx layout.Context) layout.Dimensions {
 
 	rowOffset := cursor.Row - ev.list.Position.First
 	x := leftPadding + lineNumWidth + lineNumberPadding +
-		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, tabWidth))
+		ev.measureTextWidth(gtx, displayPrefixForCursor(lines[cursor.Row], cursor.Col, tabWidth)) - ev.xOffset
 	y := gtx.Dp(editorInsetTop) - ev.list.Position.Offset + (rowOffset * lineHeight) + (lineHeight-cursorHeight)/2 - 1
 	contentRect := image.Rectangle{
 		Min: image.Point{
@@ -307,7 +308,7 @@ func (ev *EditorView) handleTextInput(text string) bool {
 	return true
 }
 
-func (ev *EditorView) ensureCursorVisible() {
+func (ev *EditorView) ensureCursorVisible(gtx layout.Context) {
 	cursorRow := ev.uc.Cursor().Row
 
 	if cursorRow < ev.list.Position.First {
@@ -322,6 +323,19 @@ func (ev *EditorView) ensureCursorVisible() {
 	lastVisibleRow := ev.list.Position.First + ev.list.Position.Count - 1
 	if cursorRow > lastVisibleRow {
 		ev.list.ScrollTo(cursorRow - ev.list.Position.Count + 1)
+	}
+
+	if ev.mode != EditorDisplayModeHorizontalScroll {
+		return
+	}
+	cursorX := ev.measureTextWidth(gtx, displayPrefixForCursor(ev.uc.Document().Line(cursorRow), ev.uc.Cursor().Col, tabWidth))
+	lineNumWidth := gtx.Dp(unit.Dp(10)) * len(strconv.Itoa(ev.uc.Document().LineCount()))
+	viewportWidth := gtx.Constraints.Max.X - gtx.Dp(editorInsetLeft) - gtx.Dp(lineNumberGap) - lineNumWidth
+	if cursorX < ev.xOffset {
+		ev.xOffset = cursorX
+	}
+	if viewportWidth > 0 && cursorX-ev.xOffset > viewportWidth {
+		ev.xOffset = cursorX - viewportWidth
 	}
 }
 
