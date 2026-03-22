@@ -25,12 +25,20 @@ type EditorView struct {
 	uc    *usecase.Editor
 	lines []string
 	list  widget.List
+	mode  EditorDisplayMode
 
 	keyTag  struct{}
 	focused bool
 
 	OnError func(error)
 }
+
+type EditorDisplayMode uint8
+
+const (
+	EditorDisplayModeWrap EditorDisplayMode = iota
+	EditorDisplayModeHorizontalScroll
+)
 
 const (
 	tabWidth          = 4
@@ -47,6 +55,7 @@ func NewEditorView(th *system.Theme, uc *usecase.Editor) *EditorView {
 		theme: th,
 		uc:    uc,
 		lines: []string{},
+		mode:  EditorDisplayModeHorizontalScroll,
 		list: widget.List{
 			List: layout.List{Axis: layout.Vertical},
 		},
