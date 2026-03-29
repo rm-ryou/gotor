@@ -101,7 +101,9 @@ func (v *View) Layout(gtx layout.Context) layout.Dimensions {
 
 func (v *View) HandleEvents(gtx layout.Context) {
 	v.explorer.HandleNodeClicks(gtx)
-	v.editor.HandleKeyInput(gtx)
+	if !v.explorer.InputActive() {
+		v.editor.HandleKeyInput(gtx)
+	}
 }
 
 func (v *View) showError(err error) {

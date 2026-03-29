@@ -12,8 +12,8 @@ import (
 
 func main() {
 	// TODO: refactor
-	fs := fs.New(true)
-	explorerUC, err := usecase.NewExplorer(fs, "")
+	fsIO := fs.New(true)
+	explorerUC, err := usecase.NewExplorer(fsIO, fsIO, "")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
