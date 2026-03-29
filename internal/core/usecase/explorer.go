@@ -11,12 +11,13 @@ import (
 
 type Explorer struct {
 	fs   domain.FSReader
+	fsw  domain.FSWriter
 	tree *domain.Tree
 
 	OnFileSelected func(path string) error
 }
 
-func NewExplorer(fs domain.FSReader, rootPath string) (*Explorer, error) {
+func NewExplorer(fs domain.FSReader, fsw domain.FSWriter, rootPath string) (*Explorer, error) {
 	absRoot, err := resolveRoot(rootPath)
 	if err != nil {
 		return nil, NewError("Failed to open the workspace.", err)
@@ -38,6 +39,7 @@ func NewExplorer(fs domain.FSReader, rootPath string) (*Explorer, error) {
 
 	return &Explorer{
 		fs:   fs,
+		fsw:  fsw,
 		tree: domain.New(root),
 	}, nil
 }
@@ -75,6 +77,24 @@ func (e *Explorer) SelectFile(node *domain.Node) error {
 			e.tree.ClearSelection()
 			return NewError("Failed to open the selected file.", err)
 		}
+	}
+
+	return nil
+}
+
+func (e *Explorer) CreateFile(dirPath, name string) error {
+	path := filepath.Join(dirPath, name)
+	if err := e.fsw.CreateFile(path); err != nil {
+		return NewError("Failed to create the file.", err)
+	}
+
+	parent := e.tree.FindNode(dirPath)
+	if parent != nil && parent.Expanded {
+		children, err := e.fs.ReadDir(dirPath, parent.Depth+1)
+		if err != nil {
+			return NewError("Failed to reload the folder.", err)
+		}
+		e.tree.Refresh(parent, children)
 	}
 
 	return nil

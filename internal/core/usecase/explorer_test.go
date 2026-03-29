@@ -56,7 +56,7 @@ func Test_NewExplorer(t *testing.T) {
 			mockFS := mocks.NewMockFSReader(ctrl)
 			tc.setupMock(mockFS)
 
-			uc, err := NewExplorer(mockFS, tc.rootPath)
+			uc, err := NewExplorer(mockFS, nil, tc.rootPath)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("want error: %t, act: %v", tc.wantErr, err)
 			}
@@ -147,7 +147,7 @@ func Test_ToggleNode(t *testing.T) {
 				mockFS.EXPECT().ReadDir(subdir, 2).Return(tc.subdirNodes, nil).MaxTimes(1)
 			}
 
-			uc, _ := NewExplorer(mockFS, root)
+			uc, _ := NewExplorer(mockFS, nil, root)
 			node := uc.Tree().VisibleNodes()[0]
 
 			var err error
@@ -188,7 +188,7 @@ func Test_SelectFile_ReturnsUserFacingErrorAndClearsSelection(t *testing.T) {
 	mockFS := mocks.NewMockFSReader(ctrl)
 	mockFS.EXPECT().ReadDir(root, 1).Return([]*domain.Node{file}, nil)
 
-	uc, err := NewExplorer(mockFS, root)
+	uc, err := NewExplorer(mockFS, nil, root)
 	if err != nil {
 		t.Fatalf("NewExplorer() error = %v", err)
 	}

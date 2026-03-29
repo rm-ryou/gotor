@@ -72,6 +72,11 @@ func (t *Tree) Reset(node *Node) {
 	t.dirty = true
 }
 
+func (t *Tree) Refresh(node *Node, children []*Node) {
+	node.Children = children
+	t.dirty = true
+}
+
 func (t *Tree) FindNode(path string) *Node {
 	return findNode(t.node, path)
 }

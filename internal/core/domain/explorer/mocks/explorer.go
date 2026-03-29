@@ -54,3 +54,41 @@ func (mr *MockFSReaderMockRecorder) ReadDir(path, depth any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadDir", reflect.TypeOf((*MockFSReader)(nil).ReadDir), path, depth)
 }
+
+// MockFSWriter is a mock of FSWriter interface.
+type MockFSWriter struct {
+	ctrl     *gomock.Controller
+	recorder *MockFSWriterMockRecorder
+	isgomock struct{}
+}
+
+// MockFSWriterMockRecorder is the mock recorder for MockFSWriter.
+type MockFSWriterMockRecorder struct {
+	mock *MockFSWriter
+}
+
+// NewMockFSWriter creates a new mock instance.
+func NewMockFSWriter(ctrl *gomock.Controller) *MockFSWriter {
+	mock := &MockFSWriter{ctrl: ctrl}
+	mock.recorder = &MockFSWriterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockFSWriter) EXPECT() *MockFSWriterMockRecorder {
+	return m.recorder
+}
+
+// CreateFile mocks base method.
+func (m *MockFSWriter) CreateFile(path string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateFile", path)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateFile indicates an expected call of CreateFile.
+func (mr *MockFSWriterMockRecorder) CreateFile(path any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFile", reflect.TypeOf((*MockFSWriter)(nil).CreateFile), path)
+}
