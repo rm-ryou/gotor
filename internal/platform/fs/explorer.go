@@ -9,6 +9,8 @@ import (
 	domain "github.com/rm-ryou/gotor/internal/core/domain/explorer"
 )
 
+var _ domain.FSWriter = (*ExplorerReader)(nil)
+
 type ExplorerReader struct {
 	showHidden bool
 }
@@ -47,4 +49,12 @@ func (er *ExplorerReader) ReadDir(path string, depth int) ([]*domain.Node, error
 	})
 
 	return nodes, nil
+}
+
+func (er *ExplorerReader) CreateFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return f.Close()
 }
